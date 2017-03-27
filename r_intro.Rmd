@@ -1,0 +1,155 @@
+---
+title: "Introduction to R"
+author: "Christine Choirat"
+date: "March 27, 2017"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction to R
+
+## Links of interest
+
+https://cran.r-project.org/
+
+https://www.rstudio.com/
+
+https://www.rstudio.com/products/rstudio/#Desktop
+
+http://dss.iq.harvard.edu/workshop-materials
+
+http://tutorials.iq.harvard.edu/R/Rintro/Rintro.html
+
+# R on Odyssey
+
+## Installing R packages
+
+### File `.bash.rc`
+
+```{bash eval=FALSE}
+# User specific aliases and functions
+source new-modules.sh
+
+module load R
+
+export R_LIBS_USER=/n/[...]/[...]/apps/R:$R_LIBS_USER
+```
+
+```{r eval=FALSE}
+install.packages('package_name', dependencies=TRUE, 
+                 repos='http://cran.rstudio.com/')
+```
+
+For example:
+
+```{r eval=FALSE}
+install.packages('tidyverse', dependencies=TRUE, 
+                 repos='http://cran.rstudio.com/')
+```
+
+## Using `devtools`
+
+`install_bioc`
+
+`install_cran`
+
+`install_github`
+
+`install_url`
+
+`install_version`
+
+## Going parallel locally
+
+```{r eval=FALSE}
+library(parallel)
+detectCores() # 4
+```
+
+```{r eval=FALSE}
+meanDist <- function(n, nsamp = 500) {
+  replicate(nsamp, mean(rnorm(n)))
+}
+
+## range of sample sizes to iterate over
+sampSizes <- seq(10, 500, by = 5)
+system.time(means <- lapply(sampSizes, meanDist))
+```
+
+```{txt}
+    user  system elapsed 
+   1.450   0.031  17.016
+```
+
+## Going parallel locally
+
+```{r eval=FALSE}
+library(parallel) 
+system.time(means <- mclapply(sampSizes, meanDist, mc.cores = 2))
+```
+
+```{txt}
+    user  system elapsed 
+    0.736   0.048   7.592 
+```
+
+## Going parallel on Odyssey: interactive jobs
+
+```{bash eval=FALSE}
+srun -p interact --pty --mem 500 -t 0-10:00 /bin/bash
+```
+
+```{bash eval=FALSE}
+[cchoirat@rclogin04 ~]$ pwd
+/n/home03/cchoirat
+[cchoirat@rclogin04 ~]$ srun -p interact --pty --mem 500 -t 0-10:00 /bin/bash
+[cchoirat@holy2a18308 ~]$ R
+```
+
+## Going parallel on Odyssey
+
+```{txt}
+> library(parallel) 
+> detectCores()
+[1] 64
+> meanDist <- function(n, nsamp = 500) {
++   replicate(nsamp, mean(rnorm(n)))
++ }
+> 
+> sampSizes <- seq(10, 500, by = 5)
+> system.time(means <- lapply(sampSizes, meanDist))
+   user  system elapsed 
+  5.038   0.010   5.048 
+> library(parallel) 
+> system.time(means <- mclapply(sampSizes, meanDist, mc.cores = 2))
+   user  system elapsed 
+  2.521   0.040   5.162 
+> system.time(means <- mclapply(sampSizes, meanDist, mc.cores = 4))
+   user  system elapsed 
+  6.381   0.138   5.258 
+```
+
+## Going parallel on Odyssey
+
+```{txt}
+> system.time(means <- mclapply(sampSizes, meanDist, mc.cores = 32))
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+srun: error: holy2a18308: task 0: Killed
+```
+
+## Going parallel on Odyssey: SLURM and job arrays
+
+https://rc.fas.harvard.edu/resources/documentation/submitting-large-numbers-of-jobs-to-odyssey/
+
+http://airoldilab.github.io/odyssey/
+
+`%A` in the `#SBATCH` line becomes the job ID
+
+`%a` in the `#SBATCH` line becomes the array index
+
+`${SLURM_ARRAY_TASK_ID}` is a shell variable that is set when
+the job runs,  and it is substituted into the parameter to 
+generate the proper filename which is passed on to tophat
